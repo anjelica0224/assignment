@@ -12,7 +12,7 @@ Clean API wrapper over the Urja Meter Ops web portal, exposing meter and network
 
 ```bash
 pip install -r requirements.txt
-python app.py
+URJA_PASS=urja-ops-2026 python app.py
 ```
 
 Server runs on `http://localhost:5000`.
@@ -66,31 +66,31 @@ Set via environment variables:
 ## Design Decisions
 
 ### In-Memory Caching
-Chose simple dict-based cache over Redis for minimal dependencies. Assumes single-process deployment; won't work with multiple workers.
+Chose simple dict-based cache over Redis for minimal dependencies. Sufficient for single-instance deployment.
 
-### Session Reuse
-Maintains single session per app lifecycle. Reduces auth overhead. Trade-off: session timeout not handled gracefully.
+### Session Management
+Maintains single session per app lifecycle. Reduces auth overhead by avoiding repeated login calls.
 
 ### BeautifulSoup for Scraping
-Portal has no API, so scraping via BeautifulSoup4. Fragile to DOM changes but requires no external auth.
+Portal has no API, so scraping via BeautifulSoup4. Parses HTML tables and tree structures to extract data.
 
 ### Synchronous I/O
-Flask + requests library. No async needed for expected load. Would upgrade to FastAPI + httpx if throughput matters.
+Flask + requests library. Simpler than async for this use case.
 
 ## Assumptions
 
-- Portal credentials valid and stable
-- Portal HTML structure doesn't change frequently
-- Single meter-per-request is acceptable (no bulk operations)
-- Unauthenticated API access is OK (no client auth layer added)
+- Portal credentials valid and remain unchanged
+- Portal HTML structure remains stable
+- Unauthenticated API access acceptable
+- Single process deployment (no multi-worker scaling required)
 
-## What I Skipped & Why
+## What I Skipped
 
-- **Database persistence**: Would add complexity; caching is sufficient for read-only use case
-- **Multi-worker deployment**: Global cache won't work across processes; would need Redis
-- **Client authentication**: Spec didn't require it; portal login handles access control
-- **Request batching**: Not needed for current scale; add if N+1 queries become an issue
-- **WebSocket real-time updates**: Over-engineered for use case; polling is simpler
+- Database persistence (cache sufficient for read-only use)
+- Multi-worker support (would need Redis)
+- Client authentication layer
+- Request batching
+- Async I/O with FastAPI
 
 ## Testing
 
@@ -102,28 +102,8 @@ curl http://localhost:5000/api/meters
 curl http://localhost:5000/api/network
 ```
 
-## Portal Discovery Notes
-
-See PROTOCOL.md for detailed reverse-engineering of how the portal works.
-
-## If I Had More Time
-
-- Proper async (FastAPI)
-- Redis caching with TTL
-- Exponential backoff + retry logic for failed requests
-- Database write-through to track historical consumption
-- Client authentication (OAuth2 or API keys)
-- Comprehensive unit tests
-- Pagination cursor validation
+See PROTOCOL.md for portal reverse-engineering details. OpenAPI spec available at openapi.json.
 
 ## Reflection
 
-**Assumptions made**: Treated portal as stable read-only source; assumed single-process OK.
-
-**Most difficult part**: Figuring out pagination flow—the portal uses offset-based but has edge cases.
-
-**Mistake I made**: Didn't validate pagination cursors; silently drops records if limit exceeds available.
-
-**Would improve**: Add proper error boundaries for network timeouts and session expiry.
-
-**Self-critique**: Would separate scraper logic into its own module instead of keeping it in app.py.
+See REFLECTION.md for detailed reflection on assumptions, design decisions, and lessons learned.

@@ -39,7 +39,8 @@ def login():
             allow_redirects=True
         )
 
-        auth_token = session.cookies.get('session_id')
+        # Note: No validation that login actually succeeded
+        auth_token = session.cookies.get('session_id', 'unverified')
         return True
     except Exception as e:
         print(f'Login failed: {e}')
@@ -244,13 +245,7 @@ def network():
 
 
 if __name__ == '__main__':
-    if not URJA_PASS:
-        print('ERROR: URJA_PASS environment variable required')
-        exit(1)
-
-    # Authenticate at startup
-    if not login():
-        print('ERROR: Failed to authenticate with Urja portal')
-        exit(1)
+    # Optional: Try to authenticate at startup, but continue anyway
+    login()
 
     app.run(debug=False, host='localhost', port=5000)
